@@ -5,7 +5,6 @@
 module axi4_slave #(
     parameter ADDR_WIDTH      = 32,
     parameter DATA_WIDTH      = 32,
-    parameter ID_WIDTH        = 4,
     parameter STRB_WIDTH      = DATA_WIDTH / 8,
     parameter MEM_DEPTH       = 256,
     parameter QUEUE_DEPTH     = 4
@@ -17,7 +16,6 @@ module axi4_slave #(
     input  logic [ADDR_WIDTH-1:0]   AWADDR,
     input  logic [7:0]              AWLEN,
     input  logic [1:0]              AWBURST,
-    input  logic [ID_WIDTH-1:0]     AWID,
     input  logic                    AWVALID,
     output logic                    AWREADY,
 
@@ -30,7 +28,6 @@ module axi4_slave #(
 
     // B Channel
     output logic [1:0]              BRESP,
-    output logic [ID_WIDTH-1:0]     BID,
     output logic                    BVALID,
     input  logic                    BREADY,
 
@@ -38,7 +35,6 @@ module axi4_slave #(
     input  logic [ADDR_WIDTH-1:0]   ARADDR,
     input  logic [7:0]              ARLEN,
     input  logic [1:0]              ARBURST,
-    input  logic [ID_WIDTH-1:0]     ARID,
     input  logic                    ARVALID,
     output logic                    ARREADY,
 
@@ -46,7 +42,6 @@ module axi4_slave #(
     output logic [DATA_WIDTH-1:0]   RDATA,
     output logic [1:0]              RRESP,
     output logic                    RLAST,
-    output logic [ID_WIDTH-1:0]     RID,
     output logic                    RVALID,
     input  logic                    RREADY
 );
@@ -94,7 +89,6 @@ module axi4_slave #(
         logic [1:0]             burst;
         logic [7:0]             len;
         logic [ADDR_WIDTH-1:0]  addr;
-        logic [ID_WIDTH-1:0]    id;
     } queue_entry_t;
 
     // =========================================================================
@@ -131,7 +125,6 @@ module axi4_slave #(
     logic [ADDR_WIDTH-1:0]  wr_addr;
     logic [8:0]             wr_beats_remaining;
     logic [1:0]             wr_burst;
-    logic [ID_WIDTH-1:0]    wr_id;
 
     // Latched W-channel data for read-modify-write
     logic [DATA_WIDTH-1:0]  wr_wdata_lat;
@@ -153,7 +146,6 @@ module axi4_slave #(
     logic [ADDR_WIDTH-1:0]  rd_addr;
     logic [8:0]             rd_beats_remaining;
     logic [1:0]             rd_burst;
-    logic [ID_WIDTH-1:0]    rd_id;
 
     // =========================================================================
     // Read Port Arbitration
@@ -237,14 +229,12 @@ module axi4_slave #(
             WREADY  <= 1'b0;
             BVALID  <= 1'b0;
             BRESP   <= 2'b00;
-            BID     <= '0;
 
             ARREADY <= 1'b0;
             RVALID  <= 1'b0;
             RDATA   <= '0;
             RRESP   <= 2'b00;
             RLAST   <= 1'b0;
-            RID     <= '0;
 
             wq_head  <= '0;
             wq_tail  <= '0;
@@ -258,7 +248,6 @@ module axi4_slave #(
             wr_addr            <= '0;
             wr_beats_remaining <= '0;
             wr_burst           <= '0;
-            wr_id              <= '0;
             wr_wdata_lat       <= '0;
             wr_wstrb_lat       <= '0;
             wr_wlast_lat       <= 1'b0;
@@ -267,7 +256,6 @@ module axi4_slave #(
             rd_addr            <= '0;
             rd_beats_remaining <= '0;
             rd_burst           <= '0;
-            rd_id              <= '0;
 
         end else begin
 
@@ -285,7 +273,6 @@ module axi4_slave #(
             AWREADY <= !wq_full;
 
             if (AWVALID && !wq_full) begin
-                wq[wq_tail[$clog2(QUEUE_DEPTH)-1:0]].id    <= AWID;
                 wq[wq_tail[$clog2(QUEUE_DEPTH)-1:0]].addr  <= AWADDR;
                 wq[wq_tail[$clog2(QUEUE_DEPTH)-1:0]].len   <= AWLEN;
                 wq[wq_tail[$clog2(QUEUE_DEPTH)-1:0]].burst <= AWBURST;
@@ -299,7 +286,6 @@ module axi4_slave #(
             ARREADY <= !rq_full;
 
             if (ARVALID && !rq_full) begin
-                rq[rq_tail[$clog2(QUEUE_DEPTH)-1:0]].id    <= ARID;
                 rq[rq_tail[$clog2(QUEUE_DEPTH)-1:0]].addr  <= ARADDR;
                 rq[rq_tail[$clog2(QUEUE_DEPTH)-1:0]].len   <= ARLEN;
                 rq[rq_tail[$clog2(QUEUE_DEPTH)-1:0]].burst <= ARBURST;
@@ -319,7 +305,6 @@ module axi4_slave #(
                         wr_addr            <= wq[wq_head[$clog2(QUEUE_DEPTH)-1:0]].addr;
                         wr_beats_remaining <= {1'b0, wq[wq_head[$clog2(QUEUE_DEPTH)-1:0]].len} + 9'd1;
                         wr_burst           <= wq[wq_head[$clog2(QUEUE_DEPTH)-1:0]].burst;
-                        wr_id              <= wq[wq_head[$clog2(QUEUE_DEPTH)-1:0]].id;
 
                         wq_head <= (wq_head + 1) % QUEUE_DEPTH;
                         wq_deq = 1'b1;
@@ -374,7 +359,6 @@ module axi4_slave #(
 
                     if (wr_wlast_lat) begin
                         // Generate write response
-                        BID      <= wr_id;
                         BRESP    <= 2'b00; // OKAY
                         BVALID   <= 1'b1;
                         wr_state <= WR_RESP;
@@ -407,7 +391,6 @@ module axi4_slave #(
                         rd_addr            <= rq[rq_head[$clog2(QUEUE_DEPTH)-1:0]].addr;
                         rd_beats_remaining <= {1'b0, rq[rq_head[$clog2(QUEUE_DEPTH)-1:0]].len} + 9'd1;
                         rd_burst           <= rq[rq_head[$clog2(QUEUE_DEPTH)-1:0]].burst;
-                        rd_id              <= rq[rq_head[$clog2(QUEUE_DEPTH)-1:0]].id;
 
                         rq_head <= (rq_head + 1) % QUEUE_DEPTH;
                         rq_deq = 1'b1;
@@ -434,7 +417,6 @@ module axi4_slave #(
                     end else begin
                         // ram_rdata is valid now (address was stable last cycle)
                         RDATA  <= ram_rdata;
-                        RID    <= rd_id;
                         RRESP  <= 2'b00; // OKAY
                         RLAST  <= (rd_beats_remaining == 9'd1);
                         RVALID <= 1'b1;
