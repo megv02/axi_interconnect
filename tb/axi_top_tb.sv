@@ -139,7 +139,8 @@ module axi_top_tb;
             if (m0_rd_data_valid) begin
                 m0_rd_results.push_back(m0_rd_data_out);
                 m0_beats_received <= m0_beats_received + 1;
-                $display("[%0t] M0 RD DATA: 0x%08h ID=%0d LAST=%0b RESP=%0b",
+                $display("[%0t] M0 RD DATA: 0x%08h LAST=%0b RESP=%0b",
+                         $time, m0_rd_data_out, m0_rd_data_last, m0_rd_data_resp);
             end
         end
         
@@ -148,7 +149,8 @@ module axi_top_tb;
             if (m1_rd_data_valid) begin
                 m1_rd_results.push_back(m1_rd_data_out);
                 m1_beats_received <= m1_beats_received + 1;
-                $display("[%0t] M1 RD DATA: 0x%08h ID=%0d LAST=%0b RESP=%0b",
+                $display("[%0t] M1 RD DATA: 0x%08h LAST=%0b RESP=%0b",
+                         $time, m1_rd_data_out, m1_rd_data_last, m1_rd_data_resp);
             end
         end
         
