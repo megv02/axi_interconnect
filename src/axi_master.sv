@@ -5,7 +5,6 @@
 module axi4_master #(
     parameter ADDR_WIDTH       = 32,
     parameter DATA_WIDTH       = 32,
-    parameter ID_WIDTH         = 4,
     parameter STRB_WIDTH       = DATA_WIDTH / 8,
     parameter REQ_QUEUE_DEPTH  = 4,
     parameter OT_QUEUE_DEPTH   = 4
@@ -17,7 +16,6 @@ module axi4_master #(
     output logic [ADDR_WIDTH-1:0]   AWADDR,
     output logic [7:0]              AWLEN,
     output logic [1:0]              AWBURST,
-    output logic [ID_WIDTH-1:0]     AWID,
     output logic                    AWVALID,
     input  logic                    AWREADY,
 
@@ -30,7 +28,6 @@ module axi4_master #(
 
     // B Channel
     input  logic [1:0]              BRESP,
-    input  logic [ID_WIDTH-1:0]     BID,
     input  logic                    BVALID,
     output logic                    BREADY,
 
@@ -38,7 +35,6 @@ module axi4_master #(
     output logic [ADDR_WIDTH-1:0]   ARADDR,
     output logic [7:0]              ARLEN,
     output logic [1:0]              ARBURST,
-    output logic [ID_WIDTH-1:0]     ARID,
     output logic                    ARVALID,
     input  logic                    ARREADY,
 
@@ -46,7 +42,6 @@ module axi4_master #(
     input  logic [DATA_WIDTH-1:0]   RDATA,
     input  logic [1:0]              RRESP,
     input  logic                    RLAST,
-    input  logic [ID_WIDTH-1:0]     RID,
     input  logic                    RVALID,
     output logic                    RREADY,
 
@@ -67,13 +62,11 @@ module axi4_master #(
 
     // Write Response Output
     output logic                    wr_resp_valid,
-    output logic [ID_WIDTH-1:0]     wr_resp_id,
     output logic [1:0]              wr_resp_resp,
 
     // Read Data Output
     output logic                    rd_data_valid,
     output logic [DATA_WIDTH-1:0]   rd_data_out,
-    output logic [ID_WIDTH-1:0]     rd_data_id,
     output logic                    rd_data_last,
     output logic [1:0]              rd_data_resp
 );
@@ -86,14 +79,12 @@ module axi4_master #(
         logic [1:0]             burst;
         logic [7:0]             len;
         logic [ADDR_WIDTH-1:0]  addr;
-        logic [ID_WIDTH-1:0]    id;
     } write_request_t;
 
     typedef struct packed {
         logic [1:0]             burst;
         logic [7:0]             len;
         logic [ADDR_WIDTH-1:0]  addr;
-        logic [ID_WIDTH-1:0]    id;
     } read_request_t;
 
     // =========================================================================
@@ -135,12 +126,6 @@ module axi4_master #(
     wire ot_rd_empty = (ot_rd_count == 0);
 
     // =========================================================================
-    // ID Counters
-    // =========================================================================
-    logic [ID_WIDTH-1:0] next_write_id;
-    logic [ID_WIDTH-1:0] next_read_id;
-
-    // =========================================================================
     // FSM States
     // =========================================================================
     typedef enum logic [1:0] { AW_IDLE, AW_VALID } aw_state_t;
@@ -161,7 +146,6 @@ module axi4_master #(
     logic [8:0]             w_beat_count;   // counts 0, 1, 2, ...
     logic [1:0]             w_burst;
     logic [DATA_WIDTH-1:0]  w_base_data;
-    logic [ID_WIDTH-1:0]    w_id;
 
     // =========================================================================
     // Latched AW request for handshake
@@ -185,7 +169,6 @@ module axi4_master #(
                 logic [ADDR_WIDTH-1:0]  r_active_addr;
                 logic [7:0]             r_active_len;
                 logic [1:0]             r_active_burst;
-                logic [ID_WIDTH-1:0]    r_active_id;
                 logic [8:0]             r_beats_remaining;
 
     // =========================================================================
@@ -202,7 +185,6 @@ module axi4_master #(
             AWADDR      <= '0;
             AWLEN       <= '0;
             AWBURST     <= '0;
-            AWID        <= '0;
 
             WVALID      <= 1'b0;
             WDATA       <= '0;
@@ -215,22 +197,17 @@ module axi4_master #(
             ARADDR      <= '0;
             ARLEN       <= '0;
             ARBURST     <= '0;
-            ARID        <= '0;
 
             RREADY      <= 1'b0;
 
             wr_resp_valid <= 1'b0;
-            wr_resp_id    <= '0;
             wr_resp_resp  <= '0;
 
             rd_data_valid <= 1'b0;
             rd_data_out   <= '0;
-            rd_data_id    <= '0;
             rd_data_last  <= 1'b0;
             rd_data_resp  <= '0;
 
-            next_write_id <= '0;
-            next_read_id  <= '0;
 
             wr_req_head  <= '0;
             wr_req_tail  <= '0;
@@ -253,7 +230,6 @@ module axi4_master #(
             w_beat_count <= '0;
             w_burst      <= '0;
             w_base_data  <= '0;
-            w_id         <= '0;
 
         end else begin
 
@@ -279,13 +255,11 @@ module axi4_master #(
             // USER WRITE REQUEST ENQUEUE
             // =============================================================
             if (wr_req_valid && !wr_req_full) begin
-                wr_req_queue[wr_req_tail[$clog2(REQ_QUEUE_DEPTH)-1:0]].id        <= next_write_id;
                 wr_req_queue[wr_req_tail[$clog2(REQ_QUEUE_DEPTH)-1:0]].addr      <= wr_req_addr;
                 wr_req_queue[wr_req_tail[$clog2(REQ_QUEUE_DEPTH)-1:0]].len       <= wr_req_len;
                 wr_req_queue[wr_req_tail[$clog2(REQ_QUEUE_DEPTH)-1:0]].burst     <= wr_req_burst;
                 wr_req_queue[wr_req_tail[$clog2(REQ_QUEUE_DEPTH)-1:0]].base_data <= wr_req_base_data;
                 wr_req_tail   <= (wr_req_tail + 1) % REQ_QUEUE_DEPTH;
-                next_write_id <= next_write_id + 1;
                 wr_req_enq = 1'b1;
             end
 
@@ -293,12 +267,10 @@ module axi4_master #(
             // USER READ REQUEST ENQUEUE
             // =============================================================
             if (rd_req_valid && !rd_req_full) begin
-                rd_req_queue[rd_req_tail[$clog2(REQ_QUEUE_DEPTH)-1:0]].id    <= next_read_id;
                 rd_req_queue[rd_req_tail[$clog2(REQ_QUEUE_DEPTH)-1:0]].addr  <= rd_req_addr;
                 rd_req_queue[rd_req_tail[$clog2(REQ_QUEUE_DEPTH)-1:0]].len   <= rd_req_len;
                 rd_req_queue[rd_req_tail[$clog2(REQ_QUEUE_DEPTH)-1:0]].burst <= rd_req_burst;
                 rd_req_tail  <= (rd_req_tail + 1) % REQ_QUEUE_DEPTH;
-                next_read_id <= next_read_id + 1;
                 rd_req_enq = 1'b1;
             end
 
@@ -315,7 +287,6 @@ module axi4_master #(
                         AWADDR  <= wr_req_queue[wr_req_head[$clog2(REQ_QUEUE_DEPTH)-1:0]].addr;
                         AWLEN   <= wr_req_queue[wr_req_head[$clog2(REQ_QUEUE_DEPTH)-1:0]].len;
                         AWBURST <= wr_req_queue[wr_req_head[$clog2(REQ_QUEUE_DEPTH)-1:0]].burst;
-                        AWID    <= wr_req_queue[wr_req_head[$clog2(REQ_QUEUE_DEPTH)-1:0]].id;
                         AWVALID <= 1'b1;
 
                         // Dequeue from write request queue
@@ -356,7 +327,6 @@ module axi4_master #(
                         w_beats_total<= {1'b0, ot_wr_queue[ot_wr_head[$clog2(OT_QUEUE_DEPTH)-1:0]].len} + 9'd1;
                         w_burst      <= ot_wr_queue[ot_wr_head[$clog2(OT_QUEUE_DEPTH)-1:0]].burst;
                         w_base_data  <= ot_wr_queue[ot_wr_head[$clog2(OT_QUEUE_DEPTH)-1:0]].base_data;
-                        w_id         <= ot_wr_queue[ot_wr_head[$clog2(OT_QUEUE_DEPTH)-1:0]].id;
                         w_beat_count <= 9'd0;
 
                         // First beat on W channel
@@ -404,7 +374,6 @@ module axi4_master #(
                 W_WAIT_RESP: begin
                     if (BVALID && BREADY) begin
                         wr_resp_valid <= 1'b1;
-                        wr_resp_id    <= BID;
                         wr_resp_resp  <= BRESP;
                         BREADY        <= 1'b0;
                         w_state       <= W_IDLE;
@@ -426,7 +395,6 @@ module axi4_master #(
                         ARADDR  <= rd_req_queue[rd_req_head[$clog2(REQ_QUEUE_DEPTH)-1:0]].addr;
                         ARLEN   <= rd_req_queue[rd_req_head[$clog2(REQ_QUEUE_DEPTH)-1:0]].len;
                         ARBURST <= rd_req_queue[rd_req_head[$clog2(REQ_QUEUE_DEPTH)-1:0]].burst;
-                        ARID    <= rd_req_queue[rd_req_head[$clog2(REQ_QUEUE_DEPTH)-1:0]].id;
                         ARVALID <= 1'b1;
 
                         rd_req_head <= (rd_req_head + 1) % REQ_QUEUE_DEPTH;
@@ -459,7 +427,6 @@ module axi4_master #(
                             r_active_addr      <= ot_rd_queue[ot_rd_head[$clog2(OT_QUEUE_DEPTH)-1:0]].addr;
                             r_active_len       <= ot_rd_queue[ot_rd_head[$clog2(OT_QUEUE_DEPTH)-1:0]].len;
                             r_active_burst     <= ot_rd_queue[ot_rd_head[$clog2(OT_QUEUE_DEPTH)-1:0]].burst;
-                            r_active_id        <= ot_rd_queue[ot_rd_head[$clog2(OT_QUEUE_DEPTH)-1:0]].id;
                             r_beats_remaining  <= {1'b0, ot_rd_queue[ot_rd_head[$clog2(OT_QUEUE_DEPTH)-1:0]].len} + 9'd1;
                             RREADY  <= 1'b1;
                             r_state <= R_ACTIVE;
@@ -471,7 +438,6 @@ module axi4_master #(
                         if (RVALID && RREADY) begin
                             rd_data_valid <= 1'b1;
                             rd_data_out   <= RDATA;
-                            rd_data_id    <= RID;
                             rd_data_last  <= RLAST;
                             rd_data_resp  <= RRESP;
                 

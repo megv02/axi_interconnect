@@ -8,7 +8,6 @@ module axi_top_tb;
     // =========================================================================
     localparam ADDR_WIDTH = 32;
     localparam DATA_WIDTH = 32;
-    localparam ID_WIDTH   = 4;
     localparam STRB_WIDTH = DATA_WIDTH / 8;
     localparam CLK_PERIOD = 10;
 
@@ -33,12 +32,10 @@ module axi_top_tb;
     logic [1:0]             m0_rd_req_burst;
 
     logic                    m0_wr_resp_valid;
-    logic [ID_WIDTH-1:0]    m0_wr_resp_id;
     logic [1:0]             m0_wr_resp_resp;
 
     logic                    m0_rd_data_valid;
     logic [DATA_WIDTH-1:0]  m0_rd_data_out;
-    logic [ID_WIDTH-1:0]    m0_rd_data_id;
     logic                    m0_rd_data_last;
     logic [1:0]             m0_rd_data_resp;
 
@@ -57,12 +54,10 @@ module axi_top_tb;
     logic [1:0]             m1_rd_req_burst;
 
     logic                    m1_wr_resp_valid;
-    logic [ID_WIDTH-1:0]    m1_wr_resp_id;
     logic [1:0]             m1_wr_resp_resp;
 
     logic                    m1_rd_data_valid;
     logic [DATA_WIDTH-1:0]  m1_rd_data_out;
-    logic [ID_WIDTH-1:0]    m1_rd_data_id;
     logic                    m1_rd_data_last;
     logic [1:0]             m1_rd_data_resp;
 
@@ -72,7 +67,6 @@ module axi_top_tb;
     axi_top #(
         .ADDR_WIDTH      (ADDR_WIDTH),
         .DATA_WIDTH      (DATA_WIDTH),
-        .ID_WIDTH        (ID_WIDTH),
         .MEM_DEPTH       (256),
         .REQ_QUEUE_DEPTH (4),
         .OT_QUEUE_DEPTH  (4),
@@ -93,11 +87,9 @@ module axi_top_tb;
         .m0_rd_req_len       (m0_rd_req_len),
         .m0_rd_req_burst     (m0_rd_req_burst),
         .m0_wr_resp_valid    (m0_wr_resp_valid),
-        .m0_wr_resp_id       (m0_wr_resp_id),
         .m0_wr_resp_resp     (m0_wr_resp_resp),
         .m0_rd_data_valid    (m0_rd_data_valid),
         .m0_rd_data_out      (m0_rd_data_out),
-        .m0_rd_data_id       (m0_rd_data_id),
         .m0_rd_data_last     (m0_rd_data_last),
         .m0_rd_data_resp     (m0_rd_data_resp),
         // M1
@@ -113,11 +105,9 @@ module axi_top_tb;
         .m1_rd_req_len       (m1_rd_req_len),
         .m1_rd_req_burst     (m1_rd_req_burst),
         .m1_wr_resp_valid    (m1_wr_resp_valid),
-        .m1_wr_resp_id       (m1_wr_resp_id),
         .m1_wr_resp_resp     (m1_wr_resp_resp),
         .m1_rd_data_valid    (m1_rd_data_valid),
         .m1_rd_data_out      (m1_rd_data_out),
-        .m1_rd_data_id       (m1_rd_data_id),
         .m1_rd_data_last     (m1_rd_data_last),
         .m1_rd_data_resp     (m1_rd_data_resp)
     );
@@ -149,8 +139,8 @@ module axi_top_tb;
             if (m0_rd_data_valid) begin
                 m0_rd_results.push_back(m0_rd_data_out);
                 m0_beats_received <= m0_beats_received + 1;
-                $display("[%0t] M0 RD DATA: 0x%08h ID=%0d LAST=%0b RESP=%0b",
-                         $time, m0_rd_data_out, m0_rd_data_id, m0_rd_data_last, m0_rd_data_resp);
+                $display("[%0t] M0 RD DATA: 0x%08h LAST=%0b RESP=%0b",
+                         $time, m0_rd_data_out, m0_rd_data_last, m0_rd_data_resp);
             end
         end
         
@@ -159,8 +149,8 @@ module axi_top_tb;
             if (m1_rd_data_valid) begin
                 m1_rd_results.push_back(m1_rd_data_out);
                 m1_beats_received <= m1_beats_received + 1;
-                $display("[%0t] M1 RD DATA: 0x%08h ID=%0d LAST=%0b RESP=%0b",
-                         $time, m1_rd_data_out, m1_rd_data_id, m1_rd_data_last, m1_rd_data_resp);
+                $display("[%0t] M1 RD DATA: 0x%08h LAST=%0b RESP=%0b",
+                         $time, m1_rd_data_out, m1_rd_data_last, m1_rd_data_resp);
             end
         end
         

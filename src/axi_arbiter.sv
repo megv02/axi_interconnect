@@ -2,7 +2,6 @@
 module axi_arbiter #(
     parameter ADDR_WIDTH = 32,
     parameter DATA_WIDTH = 32,
-    parameter ID_WIDTH   = 4,
     parameter STRB_WIDTH = DATA_WIDTH / 8
 )(
     input  logic clk,
@@ -12,7 +11,6 @@ module axi_arbiter #(
     input  logic [ADDR_WIDTH-1:0]  m0_awaddr,
     input  logic [7:0]             m0_awlen,
     input  logic [1:0]             m0_awburst,
-    input  logic [ID_WIDTH-1:0]    m0_awid,
     input  logic                   m0_awvalid,
     output logic                   m0_awready,
     input  logic [DATA_WIDTH-1:0]  m0_wdata,
@@ -21,27 +19,23 @@ module axi_arbiter #(
     input  logic                   m0_wlast,
     output logic                   m0_wready,
     output logic [1:0]             m0_bresp,
-    output logic [ID_WIDTH-1:0]    m0_bid,
     output logic                   m0_bvalid,
     input  logic                   m0_bready,
     input  logic [ADDR_WIDTH-1:0]  m0_araddr,
     input  logic [7:0]             m0_arlen,
     input  logic [1:0]             m0_arburst,
-    input  logic [ID_WIDTH-1:0]    m0_arid,
     input  logic                   m0_arvalid,
     output logic                   m0_arready,
     output logic [DATA_WIDTH-1:0]  m0_rdata,
     output logic [1:0]             m0_rresp,
     output logic                   m0_rvalid,
     output logic                   m0_rlast,
-    output logic [ID_WIDTH-1:0]    m0_rid,
     input  logic                   m0_rready,
 
     // Master 1
     input  logic [ADDR_WIDTH-1:0]  m1_awaddr,
     input  logic [7:0]             m1_awlen,
     input  logic [1:0]             m1_awburst,
-    input  logic [ID_WIDTH-1:0]    m1_awid,
     input  logic                   m1_awvalid,
     output logic                   m1_awready,
     input  logic [DATA_WIDTH-1:0]  m1_wdata,
@@ -50,27 +44,23 @@ module axi_arbiter #(
     input  logic                   m1_wlast,
     output logic                   m1_wready,
     output logic [1:0]             m1_bresp,
-    output logic [ID_WIDTH-1:0]    m1_bid,
     output logic                   m1_bvalid,
     input  logic                   m1_bready,
     input  logic [ADDR_WIDTH-1:0]  m1_araddr,
     input  logic [7:0]             m1_arlen,
     input  logic [1:0]             m1_arburst,
-    input  logic [ID_WIDTH-1:0]    m1_arid,
     input  logic                   m1_arvalid,
     output logic                   m1_arready,
     output logic [DATA_WIDTH-1:0]  m1_rdata,
     output logic [1:0]             m1_rresp,
     output logic                   m1_rvalid,
     output logic                   m1_rlast,
-    output logic [ID_WIDTH-1:0]    m1_rid,
     input  logic                   m1_rready,
 
     // Slave
     output logic [ADDR_WIDTH-1:0]  s_awaddr,
     output logic [7:0]             s_awlen,
     output logic [1:0]             s_awburst,
-    output logic [ID_WIDTH-1:0]    s_awid,
     output logic                   s_awvalid,
     input  logic                   s_awready,
     output logic [DATA_WIDTH-1:0]  s_wdata,
@@ -79,20 +69,17 @@ module axi_arbiter #(
     output logic                   s_wlast,
     input  logic                   s_wready,
     input  logic [1:0]             s_bresp,
-    input  logic [ID_WIDTH-1:0]    s_bid,
     input  logic                   s_bvalid,
     output logic                   s_bready,
     output logic [ADDR_WIDTH-1:0]  s_araddr,
     output logic [7:0]             s_arlen,
     output logic [1:0]             s_arburst,
-    output logic [ID_WIDTH-1:0]    s_arid,
     output logic                   s_arvalid,
     input  logic                   s_arready,
     input  logic [DATA_WIDTH-1:0]  s_rdata,
     input  logic [1:0]             s_rresp,
     input  logic                   s_rvalid,
     input  logic                   s_rlast,
-    input  logic [ID_WIDTH-1:0]    s_rid,
     output logic                   s_rready
 );
 
@@ -120,14 +107,11 @@ module axi_arbiter #(
         m1_bvalid  = 1'b0;
         m0_bresp   = 2'b00;
         m1_bresp   = 2'b00;
-        m0_bid     = '0;
-        m1_bid     = '0;
 
         s_awvalid  = 1'b0;
         s_awaddr   = '0;
         s_awlen    = '0;
         s_awburst  = '0;
-        s_awid     = '0;
         s_wvalid   = 1'b0;
         s_wdata    = '0;
         s_wstrb    = '0;
@@ -140,7 +124,6 @@ module axi_arbiter #(
                 s_awaddr   = m0_awaddr;
                 s_awlen    = m0_awlen;
                 s_awburst  = m0_awburst;
-                s_awid     = m0_awid;
                 s_awvalid  = m0_awvalid;
                 m0_awready = s_awready;
 
@@ -153,7 +136,6 @@ module axi_arbiter #(
                 s_awaddr   = m1_awaddr;
                 s_awlen    = m1_awlen;
                 s_awburst  = m1_awburst;
-                s_awid     = m1_awid;
                 s_awvalid  = m1_awvalid;
                 m1_awready = s_awready;
 
@@ -168,12 +150,10 @@ module axi_arbiter #(
             // Route B from slave to granted master
             if (!w_grant) begin
                 m0_bresp  = s_bresp;
-                m0_bid    = s_bid;
                 m0_bvalid = s_bvalid;
                 s_bready  = m0_bready;
             end else begin
                 m1_bresp  = s_bresp;
-                m1_bid    = s_bid;
                 m1_bvalid = s_bvalid;
                 s_bready  = m1_bready;
             end
@@ -254,14 +234,11 @@ module axi_arbiter #(
         m1_rresp   = 2'b00;
         m0_rlast   = 1'b0;
         m1_rlast   = 1'b0;
-        m0_rid     = '0;
-        m1_rid     = '0;
 
         s_arvalid  = 1'b0;
         s_araddr   = '0;
         s_arlen    = '0;
         s_arburst  = '0;
-        s_arid     = '0;
         s_rready   = 1'b0;
 
         if (rarb_state == R_ADDR) begin
@@ -269,14 +246,12 @@ module axi_arbiter #(
                 s_araddr   = m0_araddr;
                 s_arlen    = m0_arlen;
                 s_arburst  = m0_arburst;
-                s_arid     = m0_arid;
                 s_arvalid  = m0_arvalid;
                 m0_arready = s_arready;
             end else begin
                 s_araddr   = m1_araddr;
                 s_arlen    = m1_arlen;
                 s_arburst  = m1_arburst;
-                s_arid     = m1_arid;
                 s_arvalid  = m1_arvalid;
                 m1_arready = s_arready;
             end
@@ -286,14 +261,12 @@ module axi_arbiter #(
                 m0_rdata  = s_rdata;
                 m0_rresp  = s_rresp;
                 m0_rlast  = s_rlast;
-                m0_rid    = s_rid;
                 m0_rvalid = s_rvalid;
                 s_rready  = m0_rready;
             end else begin
                 m1_rdata  = s_rdata;
                 m1_rresp  = s_rresp;
                 m1_rlast  = s_rlast;
-                m1_rid    = s_rid;
                 m1_rvalid = s_rvalid;
                 s_rready  = m1_rready;
             end
